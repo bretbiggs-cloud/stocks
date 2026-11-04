@@ -104,6 +104,30 @@ class TrialTests(unittest.TestCase):
         self.assertTrue(all(d["reason"] == "news_unavailable" for d in result["latest_decisions"]))
         self.assertEqual(self.broker.calls, [])
 
+    def test_paper_research_requires_news_and_date_gate(self):
+        from decimal import Decimal as D
+        e = Engine(self.broker, self.store, self.root, enabled=True, strategy_enabled=True)
+        opening = self.now - timedelta(minutes=30)
+        args = (self.now, opening, {"cash": "2000"}, [], [], D(2000), D(2000))
+        with patch("stocks.engine.signal", side_effect=lambda *a: {"buy": True, "volume_ratio": "2"}), patch.object(e, "buy") as buy:
+            e.research(*args)
+            buy.assert_not_called()
+            self.broker.news = lambda *a: []
+            self.store.put("news-volume-v1:news", None)
+            e.research(*args)
+            buy.assert_not_called()
+            self.broker.news = lambda *a: [dict(id=9, headline="News", source="benzinga", url="https://example.com",
+                symbols=["AAPL"], created_at=self.now.isoformat(), updated_at=self.now.isoformat())]
+            self.store.put("news-volume-v1:news", None)
+            e.research(*args)
+            self.assertEqual(buy.call_count, 1)
+            self.assertEqual(buy.call_args.args[4], "AAPL")
+        p = {"symbol": "AAPL", "side": "buy", "qty": ".1", "type": "limit", "limit_price": "100"}
+        with self.assertRaises(ValueError):
+            e.submit(self.now, "news-volume-v1:test", p)
+        e.strategy_date = self.now.astimezone(ET).date().isoformat()
+        self.assertTrue(e.submit(self.now, "news-volume-v1:test", p))
+
     def test_mock_trade_and_exit_never_reach_broker_submit(self):
         opening = self.now - timedelta(minutes=30)
         closing = self.now + timedelta(hours=3)

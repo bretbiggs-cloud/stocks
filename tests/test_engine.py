@@ -45,6 +45,8 @@ class EngineTests(unittest.TestCase):
         self.broker = BrokerFake()
         self.engine = Engine(self.broker, self.store, self.tmp.name, enabled=True, strategy_enabled=True)
         self.now = datetime.now(timezone.utc)
+        from stocks.engine import ET
+        self.engine.strategy_date = self.now.astimezone(ET).date().isoformat()
         self.payload = {"symbol": "AAPL", "side": "buy", "qty": "0.1", "type": "limit", "limit_price": "100"}
 
     def tearDown(self):

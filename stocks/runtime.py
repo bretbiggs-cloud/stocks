@@ -83,6 +83,7 @@ def main():
                 settings = json.loads((root / "settings.json").read_text())
                 engine.enabled = settings.get("paper_enabled") is True
                 engine.strategy_enabled = settings.get("strategy_enabled") is True
+                engine.strategy_date = settings.get("strategy_date")
                 engine.canary_date = settings.get("canary_date")
                 engine.shadow_date = settings.get("shadow_date")
                 if settings.get("pause_entries") is True:

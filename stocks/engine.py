@@ -7,7 +7,9 @@ import json
 
 from stocks.broker import ApiError, PAPER
 from stocks.risk import Buy, Snapshot, validate_buy, fresh
-from stocks.strategy import SYMBOLS, VERSION, number, signal, stamp
+from stocks.strategy import SYMBOLS, number, signal, stamp
+
+from stocks.news import VERSION, observe_news, eligible_articles
 
 ET = ZoneInfo("America/New_York")
 
@@ -21,10 +23,11 @@ def dec(value):
 
 class Engine:
     def __init__(self, broker, store, root, *, enabled=False, host_ok=lambda: True,
-                 strategy_enabled=False, canary_date=None, shadow_date=None):
+                 strategy_enabled=False, canary_date=None, shadow_date=None, strategy_date=None):
         self.broker, self.store, self.root = broker, store, Path(root)
         self.enabled, self.host_ok = enabled, host_ok
         self.strategy_enabled = strategy_enabled
+        self.strategy_date = strategy_date
         self.canary_date, self.shadow_date = canary_date, shadow_date
 
     def emit(self, now, kind, **body):
@@ -56,8 +59,8 @@ class Engine:
                 if self.canary_date != now.astimezone(ET).date().isoformat() or payload["symbol"] != "AAPL" or \
                         payload.get("type") != "limit" or dec(payload["qty"]) * dec(payload["limit_price"]) > 10:
                     raise ValueError("Canary not authorized for this date/instrument/amount")
-            elif not self.strategy_enabled:
-                raise ValueError("Strategy purchases are disabled")
+            elif not self.strategy_enabled or self.strategy_date != now.astimezone(ET).date().isoformat():
+                raise ValueError("Strategy purchases disabled or date not authorized")
         client_id = self.store.reserve(key, payload)
         try:
             order = self.broker.submit(dict(payload, client_order_id=client_id))
@@ -200,7 +203,8 @@ class Engine:
             self.store.db.execute("INSERT OR REPLACE INTO balances VALUES (?,?,?)",
                                   (now.isoformat(), str(equity), str(cash)))
         status = {"time": now.isoformat(), "strategy": VERSION, "enabled": self.enabled,
-                  "strategy_purchases_enabled": self.strategy_enabled,
+                  "strategy_purchases_enabled": self.strategy_enabled and day == self.strategy_date,
+                  "strategy_date": self.strategy_date,
                   "canary_date": self.canary_date, "shadow_date": self.shadow_date,
                   "market_open": clock["is_open"], "next_open": clock["next_open"],
                   "cash": str(cash), "equity": str(equity), "positions": len(positions),
@@ -289,7 +293,7 @@ class Engine:
                 self.buy(now, account, positions, orders, "AAPL", D(10), "canary:buy", day_start, peak)
                 status["mode"] = "canary_test"
         elif self.store.get("canary") == "passed" and not orders:
-            if not self.strategy_enabled:
+            if not self.strategy_enabled or day != self.strategy_date:
                 status["mode"] = "strategy_purchases_disabled"
             elif now < opening + timedelta(minutes=21):
                 status["mode"] = "waiting_for_opening_range"
@@ -302,7 +306,8 @@ class Engine:
                        allow_entries=not blocked and host_ready)
             run_shadow(self.broker, self.store, self.root, now, opening, closing,
                        allow_entries=not blocked and host_ready, news_filter=True)
-            status["mode"] = "mock_trial_no_strategy_orders"
+            if not self.strategy_enabled or day != self.strategy_date:
+                status["mode"] = "mock_trial_no_strategy_orders"
         status.update(canary=self.store.get("canary"), review_lock=self.store.get("review_lock", False),
                       daily_lock=self.store.get("daily_lock", False), attention=self.store.get("attention"))
         self.report(now, status)
@@ -314,12 +319,21 @@ class Engine:
         count = self.store.db.execute("SELECT count(*) FROM intents WHERE intent_key LIKE ?", (prefix + "%",)).fetchone()[0]
         if count >= 4:
             return
+        news = observe_news(self.broker, self.store, now)
+        if not news["ok"]:
+            self.emit(now, "paper_news_blocked", reason="news_unavailable_or_incomplete")
+            return
         bars = self.broker.bars(SYMBOLS, opening.isoformat(), (now - timedelta(seconds=1)).isoformat())
         held = {p["symbol"] for p in positions}
         candidates = []
         for symbol in SYMBOLS:
             decision = signal(bars[symbol], opening, now)
-            self.emit(now, "research", symbol=symbol, **decision)
+            articles = eligible_articles(news["articles"], symbol, now)
+            decision["news_ids"] = [a["id"] for a in articles]
+            decision["news_evidence"] = articles
+            if not articles:
+                decision.update(buy=False, reason="no_recent_news")
+            self.emit(now, "research", version=VERSION, symbol=symbol, **decision)
             if decision["buy"] and symbol not in held and not self.store.exists(prefix + symbol):
                 candidates.append((dec(decision["volume_ratio"]), symbol))
         for _, symbol in sorted(candidates, reverse=True):
@@ -327,6 +341,11 @@ class Engine:
             if dollars < 1:
                 return
             # One new entry per tick, then reconcile before considering another.
+            # News/price evidence must still be timely after data requests.
+            check_time = datetime.now(timezone.utc)
+            if check_time - now > timedelta(seconds=60) or not eligible_articles(news["articles"], symbol, check_time):
+                self.emit(check_time, "paper_news_blocked", symbol=symbol, reason="expired_evidence")
+                return
             self.buy(now, account, positions, orders, symbol, dollars, prefix + symbol, day_start, peak)
             return
 
