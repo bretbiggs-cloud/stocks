@@ -71,3 +71,11 @@ class TrialTests(unittest.TestCase):
         self.assertEqual(state["positions"], {})
         self.assertEqual(len(state["trades"]), 1)
         self.assertEqual(self.broker.calls, [])
+        self.assertEqual(state["completed_trades"], 1)
+        self.assertEqual(state["wins"], 1)
+        self.assertEqual(state["win_rate"], "1")
+        from decimal import Decimal as D
+        self.assertEqual(D(state["unrealized_modeled_pnl"]), 0)
+        self.assertEqual(D(state["total_modeled_pnl"]), D(state["equity"]) - 2000)
+        self.assertGreater(D(state["modeled_execution_cost"]), 0)
+        self.assertFalse(state["net_profit_verified"])

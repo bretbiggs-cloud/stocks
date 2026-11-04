@@ -78,6 +78,20 @@ def run_shadow(broker, store, root, now, opening, closing, *, allow_entries):
             state["used"].append(symbol)
     state["cash"] = str(cash)
     state["equity"] = str(cash + sum((D(p["qty"]) * D(p["mark"]) for p in state["positions"].values()), D(0)))
+    net = D(state["equity"]) - D(2000)
+    closed = [D(t["modeled_pnl"]) for t in state["trades"]]
+    realized = sum(closed, D(0))
+    fees = sum((D(t["qty"]) * (D(t["entry"]) + D(t["exit"])) * D(".001") for t in state["trades"]), D(0))
+    fees += sum((D(p["qty"]) * D(p["entry"]) * D(".001") for p in state["positions"].values()), D(0))
+    peak = max(D(state.get("peak_equity", "2000")), equity, D(state["equity"]))
+    drawdown = max(D(state.get("max_observed_drawdown", "0")), peak - min(equity, D(state["equity"])))
+    state.update(peak_equity=str(peak), max_observed_drawdown=str(drawdown),
+                 completed_trades=len(closed), wins=sum(p > 0 for p in closed), losses=sum(p < 0 for p in closed),
+                 win_rate=str(D(sum(p > 0 for p in closed)) / len(closed)) if closed else None,
+                 realized_modeled_pnl=str(realized), unrealized_modeled_pnl=str(net - realized),
+                 total_modeled_pnl=str(net), modeled_execution_cost=str(fees),
+                 gross_pnl_before_modeled_cost=str(net + fees), electricity_cost="unknown",
+                 net_profit_verified=False, cash_benchmark_pnl="0")
     state.update(time=now.isoformat(), missing_quotes=missing, broker_strategy_orders=0,
                  note="Forward mock ledger only: assumed fills at observed ask/bid plus 10bps each side. No Alpaca orders. Unqualified original strategy measured for diagnostics only.")
     store.put(key, state)
