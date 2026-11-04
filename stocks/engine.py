@@ -20,9 +20,12 @@ def dec(value):
 
 
 class Engine:
-    def __init__(self, broker, store, root, *, enabled=False, host_ok=lambda: True):
+    def __init__(self, broker, store, root, *, enabled=False, host_ok=lambda: True,
+                 strategy_enabled=False, canary_date=None, shadow_date=None):
         self.broker, self.store, self.root = broker, store, Path(root)
         self.enabled, self.host_ok = enabled, host_ok
+        self.strategy_enabled = strategy_enabled
+        self.canary_date, self.shadow_date = canary_date, shadow_date
 
     def emit(self, now, kind, **body):
         self.store.event(now, kind, body)
@@ -48,6 +51,13 @@ class Engine:
     def submit(self, now, key, payload):
         if not self.enabled or self.store.exists(key):
             return False
+        if payload["side"] == "buy":
+            if key == "canary:buy":
+                if self.canary_date != now.astimezone(ET).date().isoformat() or payload["symbol"] != "AAPL" or \
+                        payload.get("type") != "limit" or dec(payload["qty"]) * dec(payload["limit_price"]) > 10:
+                    raise ValueError("Canary not authorized for this date/instrument/amount")
+            elif not self.strategy_enabled:
+                raise ValueError("Strategy purchases are disabled")
         client_id = self.store.reserve(key, payload)
         try:
             order = self.broker.submit(dict(payload, client_order_id=client_id))
@@ -190,6 +200,8 @@ class Engine:
             self.store.db.execute("INSERT OR REPLACE INTO balances VALUES (?,?,?)",
                                   (now.isoformat(), str(equity), str(cash)))
         status = {"time": now.isoformat(), "strategy": VERSION, "enabled": self.enabled,
+                  "strategy_purchases_enabled": self.strategy_enabled,
+                  "canary_date": self.canary_date, "shadow_date": self.shadow_date,
                   "market_open": clock["is_open"], "next_open": clock["next_open"],
                   "cash": str(cash), "equity": str(equity), "positions": len(positions),
                   "open_orders": len(orders), "canary": self.store.get("canary"),
@@ -265,20 +277,30 @@ class Engine:
         blocked = forced or exiting or canceled or uncertain or foreign or bool(mismatched) or not stable_cash or \
                   self.store.get("daily_lock") or self.store.get("review_lock") or \
                   now < opening + timedelta(minutes=5) or now >= closing - timedelta(minutes=30)
+        host_ready = self.host_ok() if not blocked and self.enabled else False
         if blocked or not self.enabled:
             status["mode"] = "entries_blocked" if blocked else "read_only"
-        elif not self.host_ok():
+        elif not host_ready:
             status["mode"] = "host_busy_entries_deferred"
         elif self.store.get("canary") == "pending":
-            if not positions and not orders and not self.store.exists("canary:buy"):
+            if day != self.canary_date:
+                status["mode"] = "waiting_for_authorized_canary_date"
+            elif not positions and not orders and not self.store.exists("canary:buy"):
                 self.buy(now, account, positions, orders, "AAPL", D(10), "canary:buy", day_start, peak)
-            status["mode"] = "canary_test"
+                status["mode"] = "canary_test"
         elif self.store.get("canary") == "passed" and not orders:
-            if now < opening + timedelta(minutes=21):
+            if not self.strategy_enabled:
+                status["mode"] = "strategy_purchases_disabled"
+            elif now < opening + timedelta(minutes=21):
                 status["mode"] = "waiting_for_opening_range"
             else:
                 self.research(now, opening, account, positions, orders, day_start, peak)
                 status["mode"] = "strategy_evaluated"
+        if self.store.get("canary") == "passed" and day == self.shadow_date:
+            from stocks.shadow import run_shadow
+            run_shadow(self.broker, self.store, self.root, now, opening, closing,
+                       allow_entries=not blocked and host_ready)
+            status["mode"] = "mock_trial_no_strategy_orders"
         status.update(canary=self.store.get("canary"), review_lock=self.store.get("review_lock", False),
                       daily_lock=self.store.get("daily_lock", False), attention=self.store.get("attention"))
         self.report(now, status)

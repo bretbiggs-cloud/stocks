@@ -43,7 +43,7 @@ class EngineTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "ledger.sqlite")
         self.broker = BrokerFake()
-        self.engine = Engine(self.broker, self.store, self.tmp.name, enabled=True)
+        self.engine = Engine(self.broker, self.store, self.tmp.name, enabled=True, strategy_enabled=True)
         self.now = datetime.now(timezone.utc)
         self.payload = {"symbol": "AAPL", "side": "buy", "qty": "0.1", "type": "limit", "limit_price": "100"}
 

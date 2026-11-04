@@ -2,7 +2,7 @@
 
 An experimental, rules-based day trader for a dedicated **$2,000 Alpaca paper account**. No live endpoint, borrowed funds, short selling, options, or paid AI calls.
 
-**New entries are PAUSED, including the first canary.** The initial strategy failed its historical diagnostic. The owner requested a better alternative; see [frozen comparison protocol](.docs/strategy-comparison-protocol.md). Running infrastructure is not a qualified trading strategy. Protective exits remain enabled, although there are currently no positions.
+**Strategy purchases are disabled.** For November 4, the owner requested a paper test and mock trial. The NAS is configured to attempt one <=$10 AAPL paper buy/sell after 09:35 Eastern, then run a separate forward mock ledger after successful reconciliation. This authorization expires after that date; the completed canary cannot unlock strategy orders. Running infrastructure is not a qualified trading strategy. Protective exits remain enabled.
 
 The [replacement review](.docs/strategy-review-2026-11-03.md) tested three candidates over 90 evaluation sessions. All lost after modeled costs in both validation and holdout. No replacement is enabled.
 
@@ -12,7 +12,7 @@ This is a scheduled Python service, not an LLM that searches the whole internet.
 
 - Fixed universe: AAPL, MSFT, AMZN, NVDA, GOOGL, META, SPY, QQQ.
 - First verify a paper buy/sell round trip of at most $10 AAPL. A failed/ambiguous test blocks further entries.
-- Then test a 15-minute opening-range breakout: fresh crossing, above session VWAP, at least 1.5 times the previous 20 bars' average volume, no chasing more than 0.5% above the range.
+- The mock ledger observes a 15-minute opening-range breakout: fresh crossing, above session VWAP, at least 1.5 times the previous 20 bars' average volume, no chasing more than 0.5% above the range. It sends no strategy orders to Alpaca.
 - Entry quote must be fresh, spread at most 0.25%, and instrument active/fractionable. Only completed same-session bars count.
 - At most $400 per position, four positions, four strategy entries per day, one entry per symbol per day. Fractional DAY limit buys; no extended-hours entries.
 - Attempt exits at a 1% loss or 2% gain; start end-of-session exits 10 minutes before the broker calendar's close. No new entries in the final 30 minutes. Early closes supported.

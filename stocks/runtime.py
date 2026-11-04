@@ -82,6 +82,9 @@ def main():
                 # File is re-read every cycle. Removing it stops new submissions including exits.
                 settings = json.loads((root / "settings.json").read_text())
                 engine.enabled = settings.get("paper_enabled") is True
+                engine.strategy_enabled = settings.get("strategy_enabled") is True
+                engine.canary_date = settings.get("canary_date")
+                engine.shadow_date = settings.get("shadow_date")
                 if settings.get("pause_entries") is True:
                     store.put("review_lock", True)
                 status = engine.tick()
