@@ -8,7 +8,7 @@ For the existing operator deployment, ongoing daily news-volume paper trading is
 
 ## Context and privacy
 
-Read README.md and the research protocol before changes. In the operator workspace, also read `.docs/decisions.md`, `.docs/setup-plan.md`, and `.agents/artifacts/current-state.md` when present. These are private, locally maintained context files, intentionally absent from the public repository. Keep their contents private.
+Read README.md, `docs/product.md`, `docs/architecture.md` and the research protocol before changes. In the operator workspace, also read `.docs/decisions.md`, `.docs/setup-plan.md`, and `.agents/artifacts/current-state.md` when present. These are private, locally maintained context files, intentionally absent from the public repository. Keep their contents private.
 
 Never commit credentials, recovery codes, account identifiers, personal contact details, private hostnames/IP addresses, operator filesystem paths, runtime databases, trading reports or private operational notes. Use generic examples and configurable deployment settings. Verify staged changes and commit metadata before publishing. Preserve the sanitized history; never merge old private history back into public branches.
 
@@ -37,3 +37,7 @@ Keep research bounded and sequential, preferably outside trading hours. Do not r
 Preserve separate Alpaca paper and hypothetical mock ledgers. Distinguish proposed, submitted, filled and closed trades. Track realized/unrealized P/L and all known costs; mark unknown expenses explicitly rather than claiming verified net profit.
 
 Run meaningful tests for execution, risk and research changes (`python -m unittest discover -s tests -q`). Verify deployed behavior before claiming success. Keep private backups and recovery evidence. Ask one meaningful question at a time when information is necessary; use existing authorization for routine work.
+
+## Product implementation instructions
+
+Use the product specification as the final-product target. Feature 1 is the full documentation update; subsequent work should implement the prioritized gaps with concrete acceptance evidence. Describe actual repository behavior rather than producing generic whole-project example instructions. Separate existing capabilities, proposed changes and deployed state. Keep README, architecture and product status consistent when behavior changes. Environment examples belong only in the configuration reference; never replace private deployment settings with example values.
