@@ -2,7 +2,7 @@ services:
   paper:
     image: python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
     container_name: stocks-paper
-    user: "1000:100"
+    user: "${STOCKS_UID:?Set STOCKS_UID}:${STOCKS_GID:?Set STOCKS_GID}"
     working_dir: /app
     command: ["python", "-m", "stocks.runtime", "--credentials", "/run/secrets/alpaca.json", "--root", "/runtime"]
     environment:
@@ -17,9 +17,9 @@ services:
     cpu_shares: 128
     tmpfs: ["/tmp:size=8m,mode=1777"]
     volumes:
-      - /srv/stocks/deployment/app:/app:ro
-      - /srv/stocks/private/alpaca.json:/run/secrets/alpaca.json:ro
-      - /srv/stocks/data:/runtime
+      - ${STOCKS_APP_DIR:?Set STOCKS_APP_DIR}:/app:ro
+      - ${STOCKS_CREDENTIALS_FILE:?Set STOCKS_CREDENTIALS_FILE}:/run/secrets/alpaca.json:ro
+      - ${STOCKS_DATA_DIR:?Set STOCKS_DATA_DIR}:/runtime
       - /proc/meminfo:/host/proc/meminfo:ro
       - /proc/stat:/host/proc/stat:ro
     restart: unless-stopped

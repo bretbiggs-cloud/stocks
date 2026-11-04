@@ -31,13 +31,23 @@ Private credentials are outside this repository. Runtime SQLite, reports and bac
 
 Stops and end-of-session exits run locally, **not as broker-held protective orders**. API outages, NAS failure, stale data, market halts and rejected/unfilled exits can produce losses beyond thresholds or overnight exposure. The service records these conditions; an external alert delivery channel is not configured. Paper execution is not evidence of real-money fill quality.
 
-The first real-session paper round trip and PC-off operation must be observed before calling those acceptance checks complete. See [current state](.agents/artifacts/current-state.md) for measured deployment status.
+Deployment acceptance and performance evidence are operator-specific and kept in private local records. Infrastructure tests alone do not establish trading performance.
 
 ## Development and operations
 
 Windows: create `.venv`, install `requirements-dev.txt`, then run `.venv\Scripts\python -m unittest discover -s tests -v`. Linux uses the standard library and system timezone database.
 
-- [Approved plan and implementation amendment](.docs/setup-plan.md)
-- [Operations, pause, backup and recovery](.docs/operations.md)
-- [Owner decisions and retained research sources](.docs/decisions.md)
-- [Current verified state](.agents/artifacts/current-state.md)
+## Private deployment configuration
+
+Copy `stacks/stocks/.env.example` to a private `.env` file on the deployment host. Set the host user/group IDs and absolute paths to source, runtime data and the existing credential JSON. Use an explicit environment-file path so Compose does not pick up unrelated settings:
+
+```sh
+docker compose --env-file /path/to/private/.env -f stacks/stocks/compose.yml config --quiet
+docker compose --env-file /path/to/private/.env -f stacks/stocks/compose.yml up -d
+```
+
+The `.env` file is ignored by Git; only the generic `.env.example` is public. Keep the credential JSON outside the repository with restricted filesystem permissions. API keys remain in that file, mounted read-only, rather than environment variables. The container paths stay fixed; this configuration maps private host paths to them. Required values fail validation if missing.
+
+Paper-only endpoints, trading risk limits, resource limits and exchange timezone remain in code/configuration. Runtime trading authorization and pause controls remain in the private `settings.json`. Environment variables do not authorize live trading or bypass safeguards.
+
+See [AGENTS.md](AGENTS.md) for public agent instructions. Private operator decisions, setup details, operations and current-state notes are intentionally not published.
