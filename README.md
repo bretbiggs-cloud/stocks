@@ -10,6 +10,7 @@ Build a reliable, unattended paper experiment with explainable decisions, reprod
 - [Architecture, strategy and operating controls](docs/architecture.md)
 - [Agent implementation instructions](AGENTS.md)
 - [Regression suite and feature acceptance](docs/testing.md)
+- [Three-candidate strategy recommendations](docs/recommendations.md)
 - [Historical comparison protocol](.docs/strategy-comparison-protocol.md)
 - [Earlier candidate results and limitations](.docs/strategy-review-2026-11-03.md)
 

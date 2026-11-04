@@ -44,3 +44,6 @@ Use the product specification as the final-product target. Feature 1 is the full
 
 ## Required regression check
 After each feature implementation, add meaningful behavior/failure tests and run `python tools/check.py`. Read `docs/testing.md` for coverage and limits. Resolve regressions before deploying; keep real credentials and network access out of automated tests. GitHub Actions reports checks but does not grant deployment authority.
+
+## Strategy recommendation requests
+Use `stocks.recommend` and `docs/recommendations.md` to compare three supported candidates against saved historical evidence. Show actual periods and costs; report missing evidence or none qualified honestly. Never turn user selection into an unreviewed strategy deployment.

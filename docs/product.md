@@ -24,6 +24,10 @@ Acceptance: public links resolve; documented controls match code; paper and mock
 | Overnight research | Separate operator-side scheduled research workflow | PC-independent research execution and measured resource acceptance |
 | Strategy improvement | Frozen versions and validation/holdout conventions | Controlled promotion workflow; no automatic self-training or deployment |
 
+## Strategy recommendations feature
+
+An offline three-candidate evidence comparison is implemented in `stocks.recommend`. See [input contract and acceptance](recommendations.md). It consumes existing comparison reports; arbitrary strategy discovery, five-year report ingestion and historical-news validation remain future work. Choosing a candidate does not deploy it.
+
 ## Prioritized follow-up features
 
 1. Complete historical data collection and coverage audit; publish only aggregate research evidence, with costs and missing-data limitations.
