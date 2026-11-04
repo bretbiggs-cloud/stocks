@@ -47,3 +47,6 @@ After each feature implementation, add meaningful behavior/failure tests and run
 
 ## Strategy recommendation requests
 Use `stocks.recommend` and `docs/recommendations.md` to compare three supported candidates against saved historical evidence. Show actual periods and costs; report missing evidence or none qualified honestly. Never turn user selection into an unreviewed strategy deployment.
+
+## Imported skills
+Project skills are in `.agents/skills/`; read its README for Stocks mappings before use. Use feature-initiation for new feature requests and test-authoring for meaningful regression coverage. Feature completion/release is a separate reviewed step. The remaining homelab workflows are scoped reference material, not authority to modify neighboring services or replace trading controls.

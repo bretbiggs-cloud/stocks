@@ -9,6 +9,7 @@ Build a reliable, unattended paper experiment with explainable decisions, reprod
 - [Product specification, feature 1 and roadmap](docs/product.md)
 - [Architecture, strategy and operating controls](docs/architecture.md)
 - [Agent implementation instructions](AGENTS.md)
+- [Project skills and Stocks mappings](.agents/skills/README.md)
 - [Regression suite and feature acceptance](docs/testing.md)
 - [Three-candidate strategy recommendations](docs/recommendations.md)
 - [Historical comparison protocol](.docs/strategy-comparison-protocol.md)
