@@ -1,0 +1,38 @@
+services:
+  paper:
+    image: python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+    container_name: stocks-paper
+    user: "1000:100"
+    working_dir: /app
+    command: ["python", "-m", "stocks.runtime", "--credentials", "/run/secrets/alpaca.json", "--root", "/runtime"]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      TZ: America/New_York
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpu_shares: 128
+    tmpfs: ["/tmp:size=8m,mode=1777"]
+    volumes:
+      - /srv/stocks/deployment/app:/app:ro
+      - /srv/stocks/private/alpaca.json:/run/secrets/alpaca.json:ro
+      - /srv/stocks/data:/runtime
+      - /proc/meminfo:/host/proc/meminfo:ro
+      - /proc/stat:/host/proc/stat:ro
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "2m", max-file: "3"}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,time,datetime; p=json.load(open('/runtime/heartbeat.json')); age=time.time()-datetime.datetime.fromisoformat(p['time']).timestamp(); assert age<180 and p['ok']"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+networks:
+  default:
+    name: stocks-paper
