@@ -58,6 +58,52 @@ class TrialTests(unittest.TestCase):
             e.submit(self.now, "canary:buy", dict(p, qty="1"))
         self.assertEqual(self.broker.calls, [])
 
+    def test_news_trial_isolated_and_failure_still_allows_exit(self):
+        opening = self.now - timedelta(minutes=30)
+        closing = self.now + timedelta(hours=3)
+        article = dict(id=7, headline="Company announcement", source="benzinga",
+                       url="https://example.com/news", symbols=["AAPL"],
+                       created_at=self.now.isoformat(), updated_at=self.now.isoformat())
+        self.broker.news = lambda *args: [article]
+        key = "shadow:news-volume-v1:" + opening.date().isoformat()
+        with patch("stocks.shadow.signal", side_effect=lambda bars, *args: {"buy": bool(bars), "volume_ratio": "2"}):
+            run_shadow(self.broker, self.store, self.root, self.now, opening, closing,
+                       allow_entries=True, news_filter=True)
+            self.assertIn("AAPL", self.store.get(key)["positions"])
+            self.assertIsNone(self.store.get("shadow:" + opening.date().isoformat()))
+            self.broker.news = lambda *args: (_ for _ in ()).throw(RuntimeError())
+            self.broker.bid = 103
+            run_shadow(self.broker, self.store, self.root, self.now + timedelta(minutes=6),
+                       opening, closing, allow_entries=True, news_filter=True)
+        result = self.store.get(key)
+        self.assertEqual(result["positions"], {})
+        self.assertEqual(len(result["trades"]), 1)
+        self.assertFalse(result["news_status"]["ok"])
+        self.assertEqual(result["trades"][0]["entry_evidence"]["news_ids"], [7])
+        self.assertEqual(self.broker.calls, [])
+
+    def test_news_rejects_stale_future_and_wrong_symbol(self):
+        from stocks.news import eligible_articles
+        row = dict(id=1, headline="News", source="benzinga", url="https://example.com",
+                   symbols=["AAPL"], created_at=self.now.isoformat(),
+                   updated_at=self.now.isoformat(), first_observed_at=self.now.isoformat())
+        self.assertEqual(len(eligible_articles([row, row], "AAPL", self.now)), 1)
+        self.assertEqual(eligible_articles([row], "MSFT", self.now), [])
+        for field, value in (("created_at", self.now-timedelta(hours=3)),
+                             ("updated_at", self.now+timedelta(minutes=1)),
+                             ("first_observed_at", self.now+timedelta(minutes=1))):
+            self.assertEqual(eligible_articles([dict(row, **{field: value.isoformat()})], "AAPL", self.now), [])
+
+    def test_news_failure_blocks_new_mock_entries(self):
+        with patch("stocks.shadow.signal", return_value={"buy": True, "volume_ratio": "2"}):
+            run_shadow(self.broker, self.store, self.root, self.now,
+                       self.now-timedelta(minutes=30), self.now+timedelta(hours=3),
+                       allow_entries=True, news_filter=True)
+        result = self.store.get("shadow:news-volume-v1:" + (self.now-timedelta(minutes=30)).date().isoformat())
+        self.assertEqual(result["positions"], {})
+        self.assertTrue(all(d["reason"] == "news_unavailable" for d in result["latest_decisions"]))
+        self.assertEqual(self.broker.calls, [])
+
     def test_mock_trade_and_exit_never_reach_broker_submit(self):
         opening = self.now - timedelta(minutes=30)
         closing = self.now + timedelta(hours=3)

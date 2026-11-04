@@ -300,6 +300,8 @@ class Engine:
             from stocks.shadow import run_shadow
             run_shadow(self.broker, self.store, self.root, now, opening, closing,
                        allow_entries=not blocked and host_ready)
+            run_shadow(self.broker, self.store, self.root, now, opening, closing,
+                       allow_entries=not blocked and host_ready, news_filter=True)
             status["mode"] = "mock_trial_no_strategy_orders"
         status.update(canary=self.store.get("canary"), review_lock=self.store.get("review_lock", False),
                       daily_lock=self.store.get("daily_lock", False), attention=self.store.get("attention"))

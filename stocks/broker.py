@@ -26,7 +26,8 @@ class Broker:
         self.opener = urllib.request.build_opener(NoRedirect)
 
     def request(self, path, *, method="GET", payload=None, data=False, params=None):
-        if not path.startswith("/v2/") or "?" in path or ".." in path:
+        news_path = data and method == "GET" and path == "/v1beta1/news"
+        if (not path.startswith("/v2/") and not news_path) or "?" in path or ".." in path:
             raise ValueError("Invalid API path")
         if data and method != "GET":
             raise ValueError("Market data is read-only")
@@ -52,6 +53,18 @@ class Broker:
                 ("trading_blocked", "account_blocked", "trade_suspended_by_user")):
             raise ValueError("Account is not ready")
         return a
+
+    def news(self, symbols, start, end):
+        params = {"symbols": ",".join(symbols), "start": start, "end": end,
+                  "sort": "desc", "limit": 50, "include_content": "false"}
+        rows = []
+        for _ in range(3):
+            page = self.request("/v1beta1/news", data=True, params=params)
+            rows.extend(page["news"])
+            if not page.get("next_page_token"):
+                return rows
+            params["page_token"] = page["next_page_token"]
+        raise ValueError("News pagination incomplete")
 
     def clock(self):
         return self.request("/v2/clock")

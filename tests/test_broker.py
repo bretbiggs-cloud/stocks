@@ -9,6 +9,16 @@ from stocks.runtime import HostGuard, ProcessLock
 
 
 class TransportTests(unittest.TestCase):
+    def test_news_pagination_must_complete(self):
+        b = object.__new__(Broker)
+        with patch.object(b, "request", side_effect=[{"news": [{"id": 1}], "next_page_token": "next"},
+                                                   {"news": [{"id": 2}]}]) as request:
+            self.assertEqual(b.news(["AAPL"], "start", "end"), [{"id": 1}, {"id": 2}])
+            self.assertTrue(request.call_args.kwargs["data"])
+        with patch.object(b, "request", return_value={"news": [], "next_page_token": "more"}):
+            with self.assertRaises(ValueError):
+                b.news(["AAPL"], "start", "end")
+
     def test_only_fixed_paper_or_data_hosts_and_no_data_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "fake.json"
@@ -18,6 +28,10 @@ class TransportTests(unittest.TestCase):
                 b.request("https://api.alpaca.markets/v2/orders")
             with self.assertRaises(ValueError):
                 b.request("/v2/stocks/bars", method="POST", data=True)
+            with self.assertRaises(ValueError):
+                b.request("/v1beta1/news", method="POST", data=True)
+            with self.assertRaises(ValueError):
+                b.request("/v1beta1/news", data=False)
             with patch.object(b.opener, "open", side_effect=RuntimeError("secret must not escape")) as call:
                 with self.assertRaisesRegex(RuntimeError, "response withheld"):
                     b.request("/v2/orders", method="POST", payload={"symbol": "AAPL"})
