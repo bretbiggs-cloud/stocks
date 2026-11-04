@@ -2,6 +2,10 @@
 
 An experimental, rules-based day trader for a dedicated **$2,000 Alpaca paper account**. No live endpoint, borrowed funds, short selling, options, or paid AI calls.
 
+**New entries are PAUSED, including the first canary.** The initial strategy failed its historical diagnostic. The owner requested a better alternative; see [frozen comparison protocol](.docs/strategy-comparison-protocol.md). Running infrastructure is not a qualified trading strategy. Protective exits remain enabled, although there are currently no positions.
+
+The [replacement review](.docs/strategy-review-2026-11-03.md) tested three candidates over 90 evaluation sessions. All lost after modeled costs in both validation and holdout. No replacement is enabled.
+
 This is a scheduled Python service, not an LLM that searches the whole internet. It uses Alpaca IEX prices and volume. TradingAgents, FinRL-DeepSeek and FinRL-Meta are research candidates, not installed dependencies.
 
 ## Strategy and limits
