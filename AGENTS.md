@@ -41,3 +41,6 @@ Run meaningful tests for execution, risk and research changes (`python -m unitte
 ## Product implementation instructions
 
 Use the product specification as the final-product target. Feature 1 is the full documentation update; subsequent work should implement the prioritized gaps with concrete acceptance evidence. Describe actual repository behavior rather than producing generic whole-project example instructions. Separate existing capabilities, proposed changes and deployed state. Keep README, architecture and product status consistent when behavior changes. Environment examples belong only in the configuration reference; never replace private deployment settings with example values.
+
+## Required regression check
+After each feature implementation, add meaningful behavior/failure tests and run `python tools/check.py`. Read `docs/testing.md` for coverage and limits. Resolve regressions before deploying; keep real credentials and network access out of automated tests. GitHub Actions reports checks but does not grant deployment authority.

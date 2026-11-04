@@ -9,6 +9,7 @@ Build a reliable, unattended paper experiment with explainable decisions, reprod
 - [Product specification, feature 1 and roadmap](docs/product.md)
 - [Architecture, strategy and operating controls](docs/architecture.md)
 - [Agent implementation instructions](AGENTS.md)
+- [Regression suite and feature acceptance](docs/testing.md)
 - [Historical comparison protocol](.docs/strategy-comparison-protocol.md)
 - [Earlier candidate results and limitations](.docs/strategy-review-2026-11-03.md)
 
@@ -22,7 +23,7 @@ Historical tooling supports resumable one/five-year collection and selected pric
 
 ## Development
 
-Create a Python virtual environment and install `requirements-dev.txt`. Run `python -m unittest discover -s tests -q`. Keep credentials, downloaded data, reports and runtime state outside the repository. See the architecture reference before changing execution or control behavior.
+Create a Python virtual environment and install `requirements-dev.txt`. Run `python tools/check.py` after every feature. Keep credentials, downloaded data, reports and runtime state outside the repository. See the architecture reference before changing execution or control behavior.
 
 ## Private deployment configuration
 
