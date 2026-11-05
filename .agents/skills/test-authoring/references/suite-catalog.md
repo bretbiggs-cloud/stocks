@@ -1,61 +1,66 @@
+> Reference patterns from upstream, not installed Stocks APIs. Read `.agents/skills/README.md` for actual commands, private credential handling and scope before using these examples.
+
 # Automated Test Suite Catalog and Assertion Patterns
 
 ## Suite Organization
 
-All tests are orchestrated via `./homelab.sh test [suite]` and live under `.tests/suites/`:
+All tests are orchestrated via the automated test harness (e.g. `./.harness/test-runner.sh [suite]`) and organized by functional boundary:
 
-| Suite File | Scope & Assertions |
+| Suite / Category | Scope & Assertions |
 | :--- | :--- |
-| `test_containers.sh` | Verifies container runtime states, exit codes (`0`), and Docker health status (`healthy`). |
-| `test_direct_admin.sh` | Tests direct host port accessibility for non-HTTP services (e.g. Jellyfin discovery `8022:7359/udp`, Dockge `8010:5001`). |
-| `test_routing.sh` | Tests client-impersonated reverse proxy virtual host routing, SSL termination, and HTTP status codes (`200`/`302`). |
-| `test_interconnect.sh` | Tests internal service-to-service DNS resolution, database sockets (`postgres:5432`), internal API endpoints, and Tailscale exit routing. |
-| `test_negative_security.sh` | Tests that sensitive administrative paths (`/swagger`, `/api-docs`, `/metrics`) are blocked (HTTP 403) on external endpoints (`*.example.invalid`). |
-| `test_backup.sh` | Tests Restic repository snapshot accessibility, lock release, and integrity check. |
+| `runtime` / `containers` | Verifies process lifecycle, daemon healthchecks, container uptime, and zero restart crashes. |
+| `interfaces` / `routing` | Tests HTTP/gRPC endpoints, routing rules, virtual host reverse proxying, SSL termination, and HTTP status codes (`200`/`302`). |
+| `interconnect` / `network` | Tests service-to-service DNS resolution, internal API communication, message broker queues, and database sockets (`5432`, `6379`). |
+| `security` | Negative security tests asserting that protected paths require auth, invalid inputs are rejected, and internal/admin metrics are blocked (`401`/`403`). |
+| `persistence` / `storage` | Tests database schema migrations, file snapshot integrity, volume permissions, and state recovery across restarts. |
 
 ---
 
 ## Assertion Helper Functions
 
-The test framework sources `.tests/lib/assertions.sh` providing standard testing helpers:
+The test harness provides standard assertion helpers:
 
 ```bash
-# Assert string equality
+# Assert string or value equality
 assert_equals "expected" "actual" "Test description"
 
+# Assert command exits with return code 0
+assert_success "curl -sf http://localhost:8080/health" "Health endpoint reports success"
+
+# Assert command fails (non-zero return code)
+assert_failure "curl -sf http://localhost:8080/admin" "Unauthenticated admin request fails"
+
 # Assert HTTP status code from curl
-assert_http_status "https://${NPM_IPV4_ADDRESS}/" 200 "Homepage root returns 200 OK" -H "Host: homepage.example.invalid"
+assert_http_status "http://localhost:8080/api/data" 200 "Data endpoint returns 200 OK" -H "Authorization: Bearer valid-token"
 
-# Assert command exits with code 0
-assert_success "docker exec postgres pg_isready -U postgres" "Postgres socket is ready"
-
-# Assert container health
-assert_container_healthy "jellyfin" "Jellyfin reports healthy status"
+# Assert regex match against output
+assert_matches "^v[0-9]+\.[0-9]+" "${version_output}" "Version output matches SemVer pattern"
 ```
 
 ---
 
-## Writing Client-Impersonated HTTP Routing Tests
+## Writing Client-Impersonated HTTP and Interface Tests
 
-Because macvlan host-isolation prevents direct loopback calls over `eth0`, test virtual host routing using client header impersonation:
+When testing reverse proxies, virtual hosts, or API gateways that require specific Host headers or simulated client origins:
 
 ```bash
 test_service_vhost() {
-  local host_header="jellyfin.home"
+  local host_header="api.internal.local"
+  local target_url="http://127.0.0.1:8080/health"
   local expected_status=200
 
   local actual_status
-  actual_status=$(curl -sk -o /dev/null -w "%{http_code}" -H "Host: ${host_header}" "https://${NPM_IPV4_ADDRESS}/")
+  actual_status=$(curl -sk -o /dev/null -w "%{http_code}" -H "Host: ${host_header}" "${target_url}")
 
-  assert_equals "${expected_status}" "${actual_status}" "Virtual host ${host_header} resolves via reverse proxy"
+  assert_equals "${expected_status}" "${actual_status}" "Virtual host ${host_header} resolves via gateway"
 }
 ```
 
 ---
 
-## RAID Transition and I/O Considerations
+## Handling Slow or Resource-Constrained Environments
 
-When a RAID rebuild/reshape/scrub is in progress on the UGREEN NAS host storage:
-- Storage latency increases significantly.
-- High I/O container operations (e.g., streaming full Restic volume checks or heavy database scans) may trigger container execution timeouts.
-- Run targeted sub-suites (`./homelab.sh test routing`, `./homelab.sh test interconnect`) instead of full heavy scans when high disk latency is detected.
+When running in resource-constrained environments (CI runners, high disk I/O, heavy background builds):
+- Storage and network latency increases.
+- Avoid tight sleep loops or microsecond timeouts; use exponential backoff polling for service readiness probes.
+- Allow targeted sub-suite execution (`./.harness/test-runner.sh interfaces`) instead of forcing monolithic heavy scans during active debug cycles.

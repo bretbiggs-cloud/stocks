@@ -14,3 +14,13 @@ backups/
 dist/
 build/
 *.egg-info/
+
+# Private operator context must remain excluded in every clone
+.agents/memory/private/
+.agents/artifacts/current-state.md
+.docs/decisions.md
+.docs/setup-plan.md
+.docs/operations.md
+.scripts/
+.codex-attachments/
+START_HERE.md

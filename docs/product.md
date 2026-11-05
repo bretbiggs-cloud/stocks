@@ -36,3 +36,7 @@ An offline three-candidate evidence comparison is implemented in `stocks.recomme
 4. Make overnight research independent of the PC only after measuring capacity and proving that it cannot interfere with trading or neighboring services.
 
 Each feature must state its trigger, resulting behavior, evidence, resource/cost impact and acceptance checks. A candidate that fails evaluation remains a failed candidate; do not tune on the final holdout to manufacture success.
+
+## Development harness
+
+See [harness commands, memory and branch boundaries](harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.

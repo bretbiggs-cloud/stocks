@@ -31,3 +31,7 @@ The prepared local `.github/workflows/regression.yml` is intended to run on push
 Add tests that demonstrate the intended behavior and plausible failure modes. For a bug fix, first reproduce the bug in a failing test. Preserve existing safeguards; do not weaken assertions merely to make checks pass. Run the full command, inspect failures, and document any untested behavior. Changed trading rules also require historical evaluation; these tests do not substitute for backtesting or forward paper observation.
 
 The suite does not prove real API availability, broker fill quality, every exchange-calendar edge case, PC-off/reboot behavior, or strategy profitability. Deployment changes require separate private read-only verification; trading tests against an account require explicit authorization. Do not enable a second executor or replay production orders as a test.
+
+## Development harness
+
+See [harness commands, memory and branch boundaries](harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.

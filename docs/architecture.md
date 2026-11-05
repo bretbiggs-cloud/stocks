@@ -36,3 +36,7 @@ Check heartbeat age, broker positions/orders, ledger reconciliation, locks and a
 ## Configuration boundary
 
 The public Compose file reads host UID/GID and mount paths from a private environment file. API keys remain in a separately protected JSON file mounted read-only. Paper endpoints and risk logic are not configurable through `.env`. The example environment file is a template, not the operator deployment. Source/config changes require explicit deployment and verification; a GitHub push alone does not update a running service.
+
+## Development harness
+
+See [harness commands, memory and branch boundaries](harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.

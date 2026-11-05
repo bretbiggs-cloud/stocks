@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
+    ast.parse((ROOT / "manage.py").read_text(encoding="utf-8-sig"), filename="manage.py")
     for directory in ("stocks", "tests", "tools"):
         for path in (ROOT / directory).rglob("*.py"):
             ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))

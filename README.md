@@ -41,3 +41,7 @@ The `.env` file is ignored by Git; only the generic `.env.example` is public. Ke
 Paper-only endpoints, trading risk limits, resource limits and exchange timezone remain in code/configuration. Runtime trading authorization and pause controls remain in the private `settings.json`. Environment variables do not authorize live trading or bypass safeguards.
 
 See [AGENTS.md](AGENTS.md) for public agent instructions. Private operator decisions, setup details, operations and current-state notes are intentionally not published.
+
+## Development harness
+
+See [harness commands, memory and branch boundaries](docs/harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.

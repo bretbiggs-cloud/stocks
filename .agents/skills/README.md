@@ -1,24 +1,19 @@
-# Imported project skills
+# Stocks harness skill mappings
 
-Source: [ParanoydAndroid/homelab-configs](https://github.com/ParanoydAndroid/homelab-configs), `.agents/skills`, revision `7f6fa6a5600b72fb936c1595e99608cc2aa4fd7b`. Copied at the operator's request with attribution. All ten skills and nine supporting references are included. Upstream personal domains, LAN ranges and storage paths have been replaced with illustrative values; no upstream deployment configuration or credentials were imported.
+Imported/adapted from coding-agent at the revision in [../UPSTREAM.md](../UPSTREAM.md). Nine generic skills replace the earlier ten homelab-specific runbooks. Read root AGENTS.md first. Generic examples are reference material; these mappings control execution here.
 
-## Stocks applicability
-
-- `feature-initiation`: use for new feature planning, design review and implementation handoff.
-- `test-authoring`: use its failure-mode and regression discipline with the Python suite.
-- `feature-completion`: use for an explicitly requested release/merge after review; importing this folder does not authorize a release.
-- Backup, recovery, network, stack and homelab skills are reference workflows. Apply only when relevant to an explicitly scoped Stocks operation. Do not run their example scripts or modify other services.
-
-## Required repository mappings
-
-| Upstream assumption | Stocks mapping |
+| Upstream convention | Stocks application |
 | --- | --- |
-| `origin/main` | Discover the actual remote default branch; currently `codex/paper-trading-setup`. Never invent a main branch. |
-| `feature/<name>` | `codex/<feature-name>` for new isolated work |
-| `.tests/suites/` and `./homelab.sh test all` | `tests/` and `python tools/check.py` |
-| `.agents/artifacts/plan_*.md` committed | Public plans go under `docs/features/` after privacy review; private operational plans stay excluded |
-| `homelab.sh`, upstream `.scripts/`, network conventions and stack directories | Not installed here; consult `docs/architecture.md` and actual code instead |
-| `.env` credentials | Host paths/IDs only; Alpaca credentials remain in a private read-only JSON file |
-| Automatic infrastructure deployment | Preserve existing trading authorization and host boundaries; verify any concrete change separately |
+| main / origin/main | Discover remote default; currently codex/paper-trading-setup, never create or assume main |
+| feature/<name> | codex/<name>, isolated worktree when needed |
+| docs/features/plan_*.md | Public sanitized plans in docs/features/; preserve unrelated plans and evidence, no wildcard cleanup |
+| .harness/test-runner.sh / shell test helpers | python tools/check.py and tests/test_*.py (unittest); shell wrapper delegates to same suite |
+| setup / convergence | python manage.py setup validates development files only; no service startup, chmod, hooks, .env copying or key generation |
+| .env secrets | stacks/stocks/.env.example documents host mappings only; credentials stay in separate private JSON |
+| Runtime audit / recovery / curl examples | Offline fakes by default; scoped, separately authorized operational work only |
+| Memory bank | Sanitized public branch context; private deployment facts remain ignored |
+| Release and tags | Separate reviewed step; never automatic after implementation |
 
-Read root AGENTS.md before applying a skill. Preserve implementation-review checkpoints when using the feature workflow, while respecting explicit user instructions and already-provided authorization. Do not retroactively restart completed features. Documentation imports do not change the trading strategy or running services.
+Use feature-initiation for new features, test-authoring for regression coverage, feature-completion only after review. component-authoring/lifecycle cover scoped module/service changes; codebase-audit and system-diagnostics cover inspection; data-safety covers private backups and isolated restore; start-project orients a new clone without authorizing trading. Read supporting references when relevant. Optional subagent prompts do not require delegation.
+
+There are no installed Bash assertion helper functions, generic backup/restore CLI, hook installer, automatic key provisioning or production test suites. The upstream examples describe patterns, not additional implemented Stocks commands.

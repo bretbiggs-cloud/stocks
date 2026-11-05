@@ -1,0 +1,36 @@
+---
+trigger: glob
+globs:
+  - "*.sh"
+  - ".harness/*.sh"
+  - ".scripts/*.sh"
+---
+
+# Shell Scripting Standards and Conventions
+
+This rule applies automatically whenever authoring, modifying, or reviewing Bash shell scripts.
+
+## 1. Strict Error Handling & Shell Standards
+- Use `#!/usr/bin/env bash` as the interpreter directive.
+- Enforce strict error boundaries at the top of every script:
+  ```bash
+  set -euo pipefail
+  ```
+- Always quote variable expansions (`"${VAR}"`) to prevent word splitting and globbing defects.
+- Avoid invalid scoping outside functions; check preconditions explicitly before mutating state.
+
+## 2. Mandatory Documentation Standards
+- **Script Header**: Every script must begin with a comprehensive header documenting purpose, architecture/context, usage syntax, subcommands, preconditions, and operational behavior.
+- **Function Docstrings**: Every function must be preceded by a longform docstring defining:
+  - `Description`: Clear explanation of purpose and mechanism.
+  - `Arguments`: `$1`, `$2`, etc.
+  - `Environment/Globals`: Variables read or mutated.
+  - `Side Effects`: Filesystem, network, or process mutations.
+  - `Return / Exit Codes`: Explicit return values.
+- **Inline Comments**: Include explanatory inline comments above complex pipelines, `awk`/`sed` expressions, parameter expansions, and non-obvious control-flow logic explaining both *what* the code does and *why*.
+
+## 3. Idempotency Preconditions
+- Setup and teardown scripts must verify current state before mutating.
+- Creating directories must use `mkdir -p`.
+- Symlinking must use `ln -sf`.
+- File edits must verify existing contents or backup before modifying.
