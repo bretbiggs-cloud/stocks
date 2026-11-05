@@ -1,6 +1,6 @@
 # Daily research selection: proposed implementation
 
-Status: design accepted; implementation in progress. No deployment yet.
+Status: implemented; 74 offline regressions pass locally and on target host. Operator deployment verified in a closed-market cycle. First production shortlist and open-session fills remain unobserved.
 
 ## Outcome
 Replace the temporary eight-symbol production entry universe with a dated daily research shortlist. The existing eight-symbol historical experiments and mock ledgers remain frozen. The operator has requested this paper-only feature; no real-money permission is implied.
@@ -16,8 +16,8 @@ Replace the temporary eight-symbol production entry universe with a dated daily 
 ## Scheduling and resources
 Use a bounded sequential premarket collector on the existing host, not a new trading process or service. Advance only one bounded collection step per eligible closed-market cycle while flat, reconciled and within host resource guards. Stop collection before the session opens. Do not perform broad scans or historical backtests while monitoring positions. Reuse the existing scheduler, private data directory and restricted container; add no inbound ports, packages, containers or paid subscriptions. Persist progress across restarts and enforce request/page/symbol/time caps. If a complete daily artifact is unavailable, report why new entries are blocked.
 
-## Design choice awaiting answer
-Recommend a 48-hour maximum age for catalyst evidence, with current price/volume and quote checks unchanged. Alternative: retain the old two-hour news age, which excludes many overnight earnings by the open. A longer window is an explicit strategy revision, not a change to quote freshness. News presence still does not establish that the event is positive or independently verified; confirmed issuer analysis must be labeled separately.
+## Accepted catalyst-age choice
+The operator approved a 48-hour maximum age for catalyst evidence, with current price/volume and quote checks unchanged. Alternative: retain the old two-hour news age, which excludes many overnight earnings by the open. A longer window is an explicit strategy revision, not a change to quote freshness. News presence still does not establish that the event is positive or independently verified; confirmed issuer analysis must be labeled separately.
 
 ## Regression acceptance
 - Discovery reaches an eligible stock outside the original eight; excluded instrument types never reach submit.
@@ -35,8 +35,12 @@ Implementation review is separate from release/merge/tagging under the project f
 
 
 ## Accepted risk-design amendment
-The operator accepted $10–$20 planned risk per trade, $20 combined open risk, and a $40 daily threshold including unrealized losses and modeled costs. Size positions from stop distance and cash instead of a fixed $400 amount. The $100 desired daily gain is aspirational, not a required minimum or reason to force entries. Implement pending-order risk reservations and cost-inclusive checks; preserve no borrowing, paper-only execution, reconciliation and protective exits. This replaces the earlier proposal to preserve fixed sizing, but is not deployed. The operator accepted the 48-hour window.
+The operator accepted $10–$20 planned risk per trade, $20 combined open risk, and a $40 daily threshold including unrealized losses and modeled costs. Size positions from stop distance and cash instead of a fixed $400 amount. The $100 desired daily gain is aspirational, not a required minimum or reason to force entries. Implement pending-order risk reservations and cost-inclusive checks; preserve no borrowing, paper-only execution, reconciliation and protective exits. This replaces the earlier proposal to preserve fixed sizing, and is deployed in the operator paper service. The operator accepted the 48-hour window.
 
 
 ## Frozen initial selection parameters
-48-hour provider-news window, 03:00–09:15 Eastern premarket collection, one request per cycle, at most 50 news pages and 100 news-derived eligible stocks. Require 21 consecutive exchange sessions of daily bars, price at least $5, prior-20-session mean IEX dollar volume at least $5 million, latest/prior-20 volume ratio at least 1.2. Rank by ratio, then dollar volume, then symbol; top eight. These experimental thresholds are not optimized. Target $10 planned risk per new entry including modeled round-trip costs, with a $20 aggregate ceiling; retain four entries and four positions as initial operational caps. No profit-target chase.
+48-hour provider-news window, 03:00–09:15 Eastern premarket collection, one request per cycle, at most 200 news pages and 100 news-derived eligible stocks. Require 21 consecutive exchange sessions of daily bars, price at least $5, prior-20-session mean IEX dollar volume at least $5 million, latest/prior-20 volume ratio at least 1.2. Rank by ratio, then dollar volume, then symbol; top eight. These experimental thresholds are not optimized. Target $10 planned risk per new entry including modeled round-trip costs, with a $20 aggregate ceiling; retain four entries and four positions as initial operational caps. No profit-target chase.
+
+
+## Acceptance evidence
+74 offline tests pass locally and in a network-disabled 128 MiB target-host container. Source hashes match the running service; successful closed-market heartbeat, flat account and clear reconciliation/locks verified. Private recovery copies and integrity evidence saved. Read-only request-budget probe covered 9,353 articles in 188 pages; 200-page cap selected for bounded capacity, not return tuning. Real premarket completion and open-session behavior remain pending. Idle memory observation is not a peak-load measurement. No release/merge/tag performed.

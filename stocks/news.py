@@ -5,7 +5,7 @@ from stocks.strategy import SYMBOLS, stamp
 VERSION = "news-volume-v1"
 
 
-def eligible_articles(rows, symbol, now):
+def eligible_articles(rows, symbol, now, *, hours=2):
     selected = {}
     for row in rows:
         try:
@@ -15,20 +15,20 @@ def eligible_articles(rows, symbol, now):
                     not row.get("url", "").startswith("https://") or
                     not row.get("headline") or not isinstance(row["id"], int)):
                 continue
-            if now - timedelta(hours=2) <= created <= updated <= now and observed <= now:
+            if now - timedelta(hours=hours) <= created <= updated <= now and created <= observed <= now:
                 selected[row["id"]] = row
         except (KeyError, TypeError, ValueError):
             continue
     return list(selected.values())
 
 
-def observe_news(broker, store, now):
-    key = VERSION + ":news"
+def observe_news(broker, store, now, *, symbols=SYMBOLS, hours=2):
+    key = VERSION + ":news" if symbols == SYMBOLS and hours == 2 else "daily-news:" + str(hours) + ":" + ",".join(symbols)
     cached = store.get(key)
     if cached and timedelta(0) <= now - stamp(cached["time"]) < timedelta(minutes=5):
         return cached
     try:
-        rows = broker.news(SYMBOLS, (now - timedelta(hours=2)).isoformat(), now.isoformat())
+        rows = broker.news(symbols, (now - timedelta(hours=hours)).isoformat(), now.isoformat())
         clean = []
         for row in rows:
             # Preserve first observation per article revision, never backdate availability.

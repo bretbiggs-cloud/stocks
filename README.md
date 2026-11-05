@@ -19,7 +19,7 @@ Build a reliable, unattended paper experiment with explainable decisions, reprod
 
 The existing operator deployment is authorized to run the news-volume strategy in Alpaca paper on market days until stopped. A new clone is not automatically authorized or provisioned. Qualifying signals, calendar checks, reconciliation and risk limits still determine whether a trade occurs.
 
-The Python service combines IEX price/volume signals with recent symbol-tagged news. It does not interpret news sentiment, autonomously learn from trades or browse the whole internet. Separate mock ledgers and historical replay are research tools, not Alpaca fills. Prior negative research results remain valid; no profitable edge is established.
+The Python service combines IEX price/volume signals with recent symbol-tagged news. The opt-in daily research version discovers a dated shortlist from broader news coverage and applies cost-aware position sizing; see the architecture reference. It does not interpret news sentiment, autonomously learn from trades or browse the whole internet. Separate mock ledgers and historical replay are research tools, not Alpaca fills. Prior negative research results remain valid; no profitable edge is established.
 
 Historical tooling supports resumable one/five-year collection and selected price-only replay candidates. Full five-year evaluation and point-in-time news backtesting are incomplete. Overnight research is a separate operator workflow and currently depends on local PC/Codex availability; the deployed NAS trader does not.
 

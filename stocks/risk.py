@@ -61,7 +61,7 @@ def fresh(timestamp: datetime, now: datetime, seconds: int) -> None:
 
 
 def validate_buy(proposal: Buy, state: Snapshot, *, expected_account: str,
-                 allowed_symbols: frozenset[str], now: datetime) -> Decimal:
+                 allowed_symbols: frozenset[str], now: datetime, planned_open_risk=None) -> Decimal:
     """Return reserved order dollars, or block. Caller serializes validation+reservation.
 
     The external asset allowlist must exclude leveraged/inverse instruments.
@@ -99,8 +99,15 @@ def validate_buy(proposal: Buy, state: Snapshot, *, expected_account: str,
         raise Blocked("insufficient unreserved cash")
     symbol_exposure = state.positions.get(proposal.symbol, Decimal(0))
     symbol_pending = state.pending_buys.get(proposal.symbol, Decimal(0))
-    if symbol_exposure + symbol_pending + cost > Decimal("400"):
+    if planned_open_risk is None and symbol_exposure + symbol_pending + cost > Decimal("400"):
         raise Blocked("position limit")
+    if planned_open_risk is not None:
+        from stocks.sizing import RISK, COST, TOTAL
+        amount(planned_open_risk, "planned open risk")
+        if cost * RISK > TOTAL or planned_open_risk + cost * RISK > TOTAL:
+            raise Blocked("planned risk limit")
+        if cost * (1 + COST) + reserved > state.cash:
+            raise Blocked("cash including modeled costs")
     occupied = {s for m in (state.positions, state.pending_buys) for s, v in m.items() if v > 0}
     if len(occupied | {proposal.symbol}) > 4:
         raise Blocked("position count")
