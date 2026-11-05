@@ -27,3 +27,7 @@ No new package dependencies. No personal source paths, credentials or account re
 
 ## Acceptance
 Run full offline suite through both tools/check.py and management entrypoint. Test setup repeatability and preservation of private files/hooks, invalid-command failure, test failure propagation, missing entrypoints and tracked-private-path rejection. Verify clean public diff and anonymous commit metadata. Keep operator workspace and running trader untouched. Update public memory with actual verification results and outstanding branch/release limits.
+
+## Integration approval — 2026-11-05
+
+The operator subsequently approved merging the harness and ensuring compatibility with daily research. This supersedes the original branch-isolation-only scope above. Preserve this plan as migration evidence. Integration retains the daily-research trading modules unchanged, moves their updated safety instructions into .agents/rules/stocks.md, combines the test suites, and updates branch-state documentation. No runtime deployment or release version is implied.

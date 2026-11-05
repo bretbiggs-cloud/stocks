@@ -18,10 +18,10 @@ Acceptance: public links resolve; documented controls match code; paper and mock
 | --- | --- | --- |
 | Alpaca paper execution | Fixed paper endpoint, fractional limit entries, reconciliation, local exits | Continue observing fills, outages and recovery; never infer live readiness |
 | Daily operation | Explicit ongoing operator authorization, broker calendar, daily date rollover | Persistent locks still require review; no guaranteed daily trade |
-| News-volume rules | Eight-symbol price/volume breakout plus recent ticker-tagged news | Sentiment, confirmed catalysts and broader-universe research are not implemented |
+| News-volume rules | Legacy eight-symbol baseline plus opt-in daily news-derived shortlist, 48-hour news and cost-aware sizing | Sentiment and confirmed catalysts are not implemented; dynamic-universe historical validation remains incomplete |
 | Performance records | Private daily/monthly paper reports; separate mock ledgers | Unified operator-facing performance view and complete actual-cost reconciliation |
 | Historical checks | Resumable one/five-year cache and supported price-only candidate replay | Full historical evaluation, point-in-time news validation and production-equivalent replay |
-| Overnight research | Separate operator-side scheduled research workflow | PC-independent research execution and measured resource acceptance |
+| Overnight research | Bounded premarket daily shortlist collector on execution host; separate operator-side deeper research workflow | Deeper historical/AI research remains PC-dependent; monitor production resource use |
 | Strategy improvement | Frozen versions and validation/holdout conventions | Controlled promotion workflow; no automatic self-training or deployment |
 
 ## Strategy recommendations feature
@@ -39,4 +39,4 @@ Each feature must state its trigger, resulting behavior, evidence, resource/cost
 
 ## Development harness
 
-See [harness commands, memory and branch boundaries](harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.
+See [harness commands, memory and branch boundaries](harness.md). The shared harness and daily-research upgrade are integrated in this checkout. Repository merges do not deploy or change private runtime settings.

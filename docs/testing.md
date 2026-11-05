@@ -32,6 +32,8 @@ Add tests that demonstrate the intended behavior and plausible failure modes. Fo
 
 The suite does not prove real API availability, broker fill quality, every exchange-calendar edge case, PC-off/reboot behavior, or strategy profitability. Deployment changes require separate private read-only verification; trading tests against an account require explicit authorization. Do not enable a second executor or replay production orders as a test.
 
+Daily research coverage includes broader-universe discovery, broker instrument exclusions, deterministic capped rankings, 48-hour expiry, pagination/API failures, missing daily bars, stale/corrupt artifacts, premarket-only one-request steps, restart persistence, full entry validation outside the legacy list, aggregate held/pending risk, cost-inclusive daily locks, cross-version daily caps, and exits when research is missing. Production feed coverage, broker metadata classification and future signal availability still require observation.
+
 ## Development harness
 
-See [harness commands, memory and branch boundaries](harness.md). This checkout retains default-branch trading code; the separate daily-research upgrade must be reconciled before a combined release. Harness changes do not deploy trading changes.
+See [harness commands and memory](harness.md). The shared harness and daily-research upgrade are integrated in this checkout. Repository merges do not deploy or change private runtime settings.

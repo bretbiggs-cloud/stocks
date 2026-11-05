@@ -23,12 +23,19 @@ def dec(value):
 
 class Engine:
     def __init__(self, broker, store, root, *, enabled=False, host_ok=lambda: True,
-                 strategy_enabled=False, canary_date=None, shadow_date=None, strategy_date=None):
+                 strategy_enabled=False, canary_date=None, shadow_date=None, strategy_date=None, daily_research=False):
         self.broker, self.store, self.root = broker, store, Path(root)
         self.enabled, self.host_ok = enabled, host_ok
         self.strategy_enabled = strategy_enabled
+        self.daily_research = daily_research
+        self._entry_validation = None
         self.strategy_date = strategy_date
         self.canary_date, self.shadow_date = canary_date, shadow_date
+
+    @property
+    def version(self):
+        from stocks.daily_research import VERSION as DAILY_VERSION
+        return DAILY_VERSION if self.daily_research else VERSION
 
     def emit(self, now, kind, **body):
         self.store.event(now, kind, body)
@@ -61,6 +68,16 @@ class Engine:
                     raise ValueError("Canary not authorized for this date/instrument/amount")
             elif not self.strategy_enabled or self.strategy_date != now.astimezone(ET).date().isoformat():
                 raise ValueError("Strategy purchases disabled or date not authorized")
+        if payload["side"] == "buy" and key != "canary:buy" and self.daily_research:
+            from stocks.daily_research import read_artifact, eligible_candidates, digest
+            actual = datetime.now(timezone.utc)
+            selected = {r['symbol'] for r in eligible_candidates(read_artifact(self.store, actual), actual)}
+            if payload['symbol'] not in selected or not self._entry_validation:
+                raise ValueError('Daily research/risk validation missing')
+            validated_key, payload_hash, checked = self._entry_validation
+            self._entry_validation = None
+            if validated_key != key or payload_hash != digest(payload) or not timedelta(0) <= actual-checked <= timedelta(seconds=5):
+                raise ValueError('Daily risk validation expired or mismatched')
         client_id = self.store.reserve(key, payload)
         try:
             order = self.broker.submit(dict(payload, client_order_id=client_id))
@@ -124,6 +141,20 @@ class Engine:
                 asset.get("status") != "active" or asset.get("tradable") is not True or \
                 asset.get("fractionable") is not True:
             raise ValueError("Instrument unavailable")
+        revised = self.daily_research and key != 'canary:buy'
+        allowed = frozenset(SYMBOLS)
+        planned = None
+        if revised:
+            from stocks.daily_research import read_artifact, eligible_candidates, stock_asset
+            from stocks.sizing import open_risk, allocation
+            actual = datetime.now(timezone.utc)
+            allowed = frozenset(r['symbol'] for r in eligible_candidates(read_artifact(self.store, actual), actual))
+            if symbol not in allowed or not stock_asset(asset):
+                raise ValueError('Research instrument unavailable')
+            planned = open_risk(positions, orders)
+            dollars = min(dollars, allocation(account['cash'], positions, orders))
+            if dollars <= 0:
+                return False
         quote = self.broker.quote(symbol)
         ask, bid = number(quote["ap"]), number(quote["bp"])
         if ask < bid or (ask - bid) / ask > D("0.0025"):
@@ -147,10 +178,13 @@ class Engine:
                          True, clock["is_open"] is True, True, False,
                          self.store.get("review_lock", False), self.store.get("daily_lock", False))
         validate_buy(Buy(symbol, qty, limit, stamp(quote["t"]), (ask - bid) / ask), state,
-                     expected_account=self.broker.expected, allowed_symbols=frozenset(SYMBOLS), now=check_time)
-        return self.submit(now, key, {"symbol": symbol, "qty": str(qty), "side": "buy",
-                           "type": "limit", "limit_price": str(limit), "time_in_force": "day",
-                           "extended_hours": False})
+                     expected_account=self.broker.expected, allowed_symbols=allowed, now=check_time, planned_open_risk=planned)
+        payload = {"symbol": symbol, "qty": str(qty), "side": "buy",
+                   "type": "limit", "limit_price": str(limit), "time_in_force": "day", "extended_hours": False}
+        if revised:
+            from stocks.daily_research import digest
+            self._entry_validation = (key, digest(payload), check_time)
+        return self.submit(now, key, payload)
 
     def tick(self):
         now = datetime.now(timezone.utc)
@@ -171,12 +205,25 @@ class Engine:
             self.store.put("initialized", True)
             self.store.put("peak_close", "2000")
             self.store.put("canary", "pending")
+        total_cost = sum((dec(o.get('filled_qty', 0)) * dec(o.get('filled_avg_price') or 0)
+                          for o in self.store.order_rows()), D(0)) * D('.001')
         if self.store.get("day") != day:
             self.store.put("day", day)
             self.store.put("day_start", str(dec(account["last_equity"])))
+            self.store.put("day_cost_start", str(total_cost))
             self.store.put("daily_lock", False)
         day_start, peak = dec(self.store.get("day_start")), dec(self.store.get("peak_close"))
-        if day_start - equity >= 40:
+        if self.daily_research and self.store.get('day_cost_start') is None:
+            # Upgrade within a session: reconstruct earlier-day fees instead of resetting today's cost.
+            prior_cost = D(0)
+            for o in self.store.order_rows():
+                if dec(o.get('filled_qty', 0)) > 0:
+                    ts = o.get('filled_at') or o.get('updated_at') or o.get('created_at')
+                    if ts and stamp(ts).astimezone(ET).date().isoformat() < day:
+                        prior_cost += dec(o['filled_qty']) * dec(o['filled_avg_price']) * D('.001')
+            self.store.put('day_cost_start', str(prior_cost))
+        day_cost = max(D(0), total_cost - dec(self.store.get('day_cost_start', str(total_cost))))
+        if day_start - equity + (day_cost if self.daily_research else D(0)) >= 40:
             self.store.put("daily_lock", True)
         if peak - equity >= 200 or cash < 0 or any(dec(p["qty"]) <= 0 for p in positions):
             self.store.put("review_lock", True)
@@ -202,7 +249,7 @@ class Engine:
         with self.store.db:
             self.store.db.execute("INSERT OR REPLACE INTO balances VALUES (?,?,?)",
                                   (now.isoformat(), str(equity), str(cash)))
-        status = {"time": now.isoformat(), "strategy": VERSION, "enabled": self.enabled,
+        status = {"time": now.isoformat(), "strategy": self.version, "enabled": self.enabled,
                   "strategy_purchases_enabled": self.strategy_enabled and day == self.strategy_date,
                   "strategy_date": self.strategy_date,
                   "canary_date": self.canary_date, "shadow_date": self.shadow_date,
@@ -213,7 +260,14 @@ class Engine:
                   "daily_lock": self.store.get("daily_lock", False), "uncertain_order": uncertain,
                   "attention": self.store.get("attention"),
                   "position_reconciliation_pending": sorted(mismatched),
-                  "mode": "monitoring", "ai_cost_usd": "0"}
+                  "mode": "monitoring", "ai_cost_usd": "0", "daily_research_enabled": self.daily_research,
+                  "daily_modeled_execution_cost": str(day_cost)}
+        if self.daily_research:
+            progress = self.store.get('daily_research_progress:'+day, {})
+            artifact = self.store.get('daily_research:'+day, {})
+            status['daily_research_phase'] = progress.get('phase', 'not_started')
+            status['daily_research_error'] = progress.get('error_type')
+            status['daily_research_symbols'] = [r['symbol'] for r in artifact.get('candidates', [])] if artifact else []
         self.report(now, status)
         if not clock["is_open"]:
             status["mode"] = "market_closed"
@@ -298,8 +352,11 @@ class Engine:
             elif now < opening + timedelta(minutes=21):
                 status["mode"] = "waiting_for_opening_range"
             else:
-                self.research(now, opening, account, positions, orders, day_start, peak)
-                status["mode"] = "strategy_evaluated"
+                if self.daily_research:
+                    status['mode'] = self.research_daily(now, opening, account, positions, orders, day_start + day_cost, peak)
+                else:
+                    self.research(now, opening, account, positions, orders, day_start, peak)
+                    status["mode"] = "strategy_evaluated"
         if self.store.get("canary") == "passed" and day == self.shadow_date:
             from stocks.shadow import run_shadow
             run_shadow(self.broker, self.store, self.root, now, opening, closing,
@@ -312,6 +369,52 @@ class Engine:
                       daily_lock=self.store.get("daily_lock", False), attention=self.store.get("attention"))
         self.report(now, status)
         return status
+
+    def research_daily(self, now, opening, account, positions, orders, day_start, peak):
+        from stocks.daily_research import read_artifact, eligible_candidates
+        from stocks.sizing import allocation
+        day = now.astimezone(ET).date().isoformat()
+        try:
+            artifact = read_artifact(self.store, now)
+            rows = eligible_candidates(artifact, now)
+        except (ValueError, KeyError, TypeError):
+            self.emit(now, 'daily_research_blocked', reason='missing_invalid_or_expired_artifact')
+            return 'daily_research_unavailable'
+        symbols = tuple(r['symbol'] for r in rows)
+        if not symbols:
+            return 'daily_research_no_candidates'
+        # Include previous strategy versions in daily attempts and per-symbol deduplication.
+        attempts = [json.loads(payload) for key, payload in self.store.db.execute('SELECT intent_key,payload FROM intents')
+                    if ':' + day + ':' in key and json.loads(payload).get('side') == 'buy']
+        if len(attempts) >= 4:
+            return 'daily_entry_limit'
+        news = observe_news(self.broker, self.store, now, symbols=symbols, hours=2)
+        if not news['ok']:
+            return 'daily_news_unavailable'
+        revisions = {a['id']: a for r in rows for a in r['evidence']}
+        revisions.update({a['id']: a for a in news['articles']})
+        evidence_rows = list(revisions.values())
+        bars = self.broker.bars(symbols, opening.isoformat(), (now-timedelta(seconds=1)).isoformat())
+        occupied = {p['symbol'] for p in positions} | {p['symbol'] for p in attempts}
+        candidates = []
+        for s in symbols:
+            decision = signal(bars.get(s, []), opening, now)
+            evidence = eligible_articles(evidence_rows, s, now, hours=48)
+            if not evidence:
+                decision.update(buy=False, reason='expired_news')
+            self.emit(now, 'research', version=self.version, symbol=s, artifact_hash=artifact['hash'], news_evidence=evidence, **decision)
+            if decision['buy'] and s not in occupied:
+                candidates.append((dec(decision['volume_ratio']), s))
+        for _, s in sorted(candidates, reverse=True):
+            actual = datetime.now(timezone.utc)
+            if not timedelta(0) <= actual-now <= timedelta(seconds=60) or not eligible_articles(evidence_rows, s, actual, hours=48):
+                return 'daily_evidence_expired'
+            dollars = allocation(account['cash'], positions, orders)
+            if dollars <= 0:
+                return 'planned_risk_or_cash_limit'
+            self.buy(now, account, positions, orders, s, dollars, f'{self.version}:{day}:{s}', day_start, peak)
+            return 'daily_strategy_evaluated'
+        return 'daily_strategy_no_signal'
 
     def research(self, now, opening, account, positions, orders, day_start, peak):
         day = opening.date().isoformat()
@@ -381,7 +484,7 @@ class Engine:
                    "ai_data_subscription_cost": "0", "electricity_cost": "unknown",
                    "net_profit_verified": False, "cash_benchmark_pnl": "0",
                    "spy_benchmark": self.store.get("spy_benchmark", "not yet observed"),
-                   "strategy": VERSION}
+                   "strategy": self.version}
         temporary = reports / (f"monthly-{month}.json.tmp")
         temporary.write_text(json.dumps(monthly, indent=2), encoding="utf-8")
         temporary.replace(reports / f"monthly-{month}.json")

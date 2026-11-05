@@ -83,6 +83,7 @@ def main():
                 settings = json.loads((root / "settings.json").read_text())
                 engine.enabled = settings.get("paper_enabled") is True
                 engine.strategy_enabled = settings.get("strategy_enabled") is True
+                engine.daily_research = settings.get("research_daily") is True
                 engine.strategy_date = (datetime.now(timezone.utc).astimezone(__import__("zoneinfo").ZoneInfo("America/New_York")).date().isoformat()
                                         if settings.get("strategy_daily") is True else settings.get("strategy_date"))
                 engine.canary_date = settings.get("canary_date")
@@ -90,6 +91,9 @@ def main():
                 if settings.get("pause_entries") is True:
                     store.put("review_lock", True)
                 status = engine.tick()
+                if engine.daily_research:
+                    from stocks.daily_research import advance
+                    advance(broker, store, root, datetime.now(timezone.utc), status, engine.host_ok)
                 if status["market_open"]:
                     engine.benchmark()
                 heartbeat = {"time": datetime.now(timezone.utc).isoformat(), "ok": True,

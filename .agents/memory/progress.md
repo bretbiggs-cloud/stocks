@@ -1,5 +1,5 @@
 # Progress
 
-2026-11-05: imported/adapted coding-agent revision 27a983d1c40a4db33ef52efb85b9256382cfbf6c on codex/agent-harness. Nine generic skills, shared instruction routing, sanitized persistent memory and cross-platform management adapter implemented. Stocks rules preserved separately; private legacy notes untouched.
+2026-11-05: integrated the shared coding-agent harness (upstream 27a983d1c40a4db33ef52efb85b9256382cfbf6c) and daily-news-volume-v2 on the approved default-branch merge path. Nine skills, shared entrypoints, sanitized persistent memory and Windows/Python management commands are present alongside the daily shortlist collector and cost-aware sizing.
 
-Verification: 63 offline unittest cases passed (56 baseline plus 7 harness contracts). Setup and audit passed. Existing regression runner retained. No active CI, installed hooks, release tags, merge or trader deployment claimed. Separate daily-research branch remains outside this checkout and must be reconciled before combined release.
+Verification: 81 offline tests passed: 74 daily-research baseline plus seven harness contracts. Trading modules remain identical to the reviewed daily-research branch. Existing regression runner retained; no active CI, installed hooks or new trader deployment claimed. No release tags assigned.

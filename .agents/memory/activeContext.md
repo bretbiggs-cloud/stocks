@@ -1,7 +1,5 @@
 # Active context
 
-Updated 2026-11-05. Branch: codex/agent-harness, based on default codex/paper-trading-setup.
+Updated 2026-11-05. Operator approved integrating the harness and daily-research upgrade into codex/paper-trading-setup. The approved combined integration is complete. No implementation work remains pending for this merge. All 81 combined offline tests passed through manage.py. The updated daily-research safety rules are in .agents/rules/stocks.md; trading source is unchanged from codex/daily-research.
 
-Harness migration implementation is complete and awaiting user review. Preserve existing paper safeguards and private context. All 63 offline tests pass through both tools/check.py and manage.py; setup and audit pass. No release or deployment is part of this task.
-
-Important branch boundary: codex/daily-research contains the separate deployed daily-research upgrade. This branch retains default-branch trading code. Reconcile those branches explicitly before any future release/deployment; never deploy this checkout over the running upgrade. Public memory is branch-local, not live account evidence.
+No new deployment, account access, strategy activation or risk-setting change was performed. Verify runtime state independently before operational claims. Preserve private operator notes and sanitized public memory. Release version tags are outside this merge's scope.
